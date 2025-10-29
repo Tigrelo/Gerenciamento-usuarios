@@ -1,53 +1,59 @@
 package com.example.gerenciamento_usuarios.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig{
+@RequiredArgsConstructor
+public class SecurityConfig {
 
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    private final JwtAuthFilter jwtAuthFilter;
+    private final AuthenticationProvider authenticationProvider;
 
-    // 2. Bean Principal de Configuração de Segurança
-    //    Aqui definimos as regras de acesso HTTP
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Desabilita o CSRF (Cross-Site Request Forgery).
-                // Não precisamos dele para uma API REST 'stateless' (que não usa sessões)
-                .csrf(csrf -> csrf.disable())
-
-                // Define a política de gerenciamento de sessão como STATELESS.
-                // Isso força o Spring a não criar sessões; cada requisição
-                // precisará se autenticar (ex: com um token JWT que faremos depois).
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable()) // Desabilita CSRF (API REST)
 
                 // Configura as regras de autorização para as requisições
                 .authorizeHttpRequests(auth -> auth
-                        // Permite acesso público a qualquer endpoint que comece com /auth/
+                        // Permite acesso público a estes endpoints:
+                        .requestMatchers("/auth/**").permitAll()      // Login e Registro
+                        .requestMatchers("/h2-console/**").permitAll() // Console H2
 
-                        .requestMatchers("/auth/**").permitAll()
+                        // (Req 5) Regras do Administrador:
+                        // Qualquer requisição para /api/admin/** DEVE ter a ROLE "ADMIN"
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // Permite acesso público ao console do H2 (APENAS PARA DESENVOLVIMENTO)
-                        .requestMatchers("/h2-console/**").permitAll()
+                        // (Req 4) Regras do Usuário Comum:
+                        // Qualquer requisição para /api/users/** DEVE ter a ROLE "USER"
+                        .requestMatchers("/api/users/**").hasRole("USER")
 
-                        // Exige autenticação para qualquer outra requisição
+                        // Qualquer outra requisição (que não demos "permitAll")
+                        // DEVE ser autenticada.
                         .anyRequest().authenticated()
-                );
+                )
 
+                // Define a política de sessão como STATELESS (API REST não guarda estado)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-        // Esta linha permite que o console H2 funcione corretamente no navegador.
+                // Diz ao Spring para usar o nosso AuthenticationProvider (do ApplicationConfig)
+                .authenticationProvider(authenticationProvider)
+
+                // Diz ao Spring para adicionar nosso JwtAuthFilter ANTES do filtro padrão de login
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Permite que o H2 Console seja exibido em um frame
         http.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
 
         return http.build();

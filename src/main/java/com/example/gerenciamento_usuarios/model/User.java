@@ -35,17 +35,25 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    public org.springframework.security.core.userdetails.UserDetails toUserDetails() {
+        return org.springframework.security.core.userdetails.User
+                .withUsername(this.email)
+                .password(this.senha)
+                .roles(this.role.name())
+                .build();
+    }
     // Campos opcionais (Req 1c)
     private String cep;
     private String estado;
     private String cidade;
 
 
-    // Construtor manual para facilitar a criação do Admin (Passo 7)
+    // Construtor manual para facilitar a criação do Admin
     public User(String nome, String email, String senha, Role role) {
         this.nome = nome;
         this.email = email;
         this.senha = senha;
         this.role = role;
+
     }
 }
