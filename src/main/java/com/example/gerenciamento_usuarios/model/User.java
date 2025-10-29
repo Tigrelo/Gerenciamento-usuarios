@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "users") // Define o nome da tabela no banco
 @Data
-@NoArgsConstructor // Lombok: gera um construtor sem argumentos (obrigatório para JPA)
+@NoArgsConstructor // Lombok: gera um construtor sem argumentos
 public class User {
 
     @Id
@@ -40,6 +40,7 @@ public class User {
     private String estado;
     private String cidade;
 
+
     // Construtor manual para facilitar a criação do Admin (Passo 7)
     public User(String nome, String email, String senha, Role role) {
         this.nome = nome;
@@ -48,6 +49,3 @@ public class User {
         this.role = role;
     }
 }
-
-
-
